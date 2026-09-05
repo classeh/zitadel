@@ -1,0 +1,162 @@
+/*
+ * پوسته‌ی Classeh روی صفحه‌ی لاگینِ ZITADEL.
+ *
+ * مرجع — و هر عدد این فایل از یکی از این‌هاست، نه از چشم:
+ *   frontend/core-app/src/features/login/components/login-form.tsx
+ *   frontend/core-app/src/shared/components/main-layout.tsx   ← ستون ۴۴۰px
+ *   backend/api-gateway/keycloak/themes/classeh/…/classeh.css ← پورتِ قبلی
+ *
+ * آن پورتِ قبلی برای Keycloak بود و با انتخاب‌گرهای PatternFly کار می‌کرد.
+ * این‌جا مارک‌آپ Tailwind است، پس انتخاب‌گرها فرق می‌کنند ولی مقادیر همانند —
+ * تا سه صفحه‌ی لاگین (core-app، Keycloak، ZITADEL) یک شکل بمانند.
+ *
+ * ⚠️ عمداً هیچ کامپوننتِ ZITADEL بازنویسی نشده. این فایل فقط توکن و چند
+ * قاعده‌ی ظاهری می‌گذارد؛ هر ارتقای ZITADEL که مارک‌آپ را عوض کند، بدترین
+ * حالتش این است که یک قاعده بی‌اثر شود — نه اینکه صفحه بشکند.
+ */
+
+:root {
+  /* از core-app: دکمه‌ی اصلی و حبابِ چپ */
+  --classeh-navy: #0a4471;
+  /* از core-app: رنگِ focusِ فیلدها و حبابِ راست */
+  --classeh-teal: #03a7a0;
+  /* `--color-main-background` در core-app */
+  --classeh-shell-bg: #fafafa;
+  /* `border-[#0000001A]` روی کارت */
+  --classeh-card-border: rgba(0, 0, 0, 0.1);
+  --classeh-ink: #0a0a0a;
+}
+
+/*
+ * پوسته‌ی صفحه — معادلِ `MainLayout`:
+ * `bg-main-background relative min-h-dvh sm:mx-auto sm:w-[440px]`
+ *
+ * ⚠️ `min-height` و نه `height`. ZITADEL می‌تواند یک پیامِ خطا بالای کارت
+ * رندر کند؛ با ارتفاعِ ثابت آن پیام زیرِ برش می‌رفت.
+ */
+body {
+  background-color: #ffffff;
+  color: var(--classeh-ink);
+}
+
+body > div:has(> main),
+body > div > div:first-child {
+  position: relative;
+}
+
+/*
+ * دو «حباب»ِ گوشه‌ی پایین. در core-app دو کامپوننتِ SVG اند
+ * (`icon-green-bulb.tsx` / `icon-black-bulb.tsx`)؛ این‌جا data-URI شده‌اند تا
+ * نه فایلِ جدایی لازم باشد، نه یک درخواستِ اضافه، و نه ۴۰۴ شدنشان ممکن.
+ *
+ * اندازه و viewBox عیناً همان‌هاست — از جمله جایی که pathِ حبابِ سبز از
+ * viewBox بیرون می‌زند و بریده می‌شود؛ همان بریدگی بخشی از شکلِ نهایی است.
+ *
+ * `right`/`left` عمداً فیزیکی‌اند و نه منطقی: در core-app هم با `right-0` و
+ * `left-0` جا افتاده‌اند و صفحه راست‌چین است.
+ */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+
+/* `IconGreenBulb` — `absolute right-0 -bottom-4` */
+body::before {
+  right: 0;
+  bottom: -16px;
+  width: 89px;
+  height: 123px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='89' height='123' viewBox='0 0 89 123' fill='none'%3E%3Cpath d='M5.99414 71.5171C-21.2059 -16.4829 49.9941 1.51721 102.494 1.51714V199.017C81.6608 193.184 33.1941 159.517 5.99414 71.5171Z' fill='%2303A7A0'/%3E%3C/svg%3E");
+}
+
+/* `IconBlackBulb` — `absolute bottom-6 left-0` */
+body::after {
+  left: 0;
+  bottom: 24px;
+  width: 103px;
+  height: 200px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='103' height='200' viewBox='0 0 103 200' fill='none'%3E%3Cpath d='M96.5 71.5171C123.7 -16.4829 52.5 1.51721 0 1.51714V199.017C20.8333 193.184 69.3 159.517 96.5 71.5171Z' fill='%230A4471'/%3E%3C/svg%3E");
+}
+
+/* کارت و محتوا باید روی حباب‌ها بنشینند. */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * کارت — معادلِ
+ * `rounded-[30px] border border-[#0000001A] bg-white/20 px-4 py-14 backdrop-blur`
+ *
+ * ZITADEL کارت را با کلاس‌های Tailwind می‌سازد و اسمِ ثابتی ندارد، پس از روی
+ * ساختار هدفش می‌گیریم: تنها فرزندِ مستقیمِ `main` که فرم را در بر دارد.
+ */
+main > div:has(form),
+main > div > div:has(> form) {
+  border-radius: 30px;
+  border: 1px solid var(--classeh-card-border);
+  background: rgba(255, 255, 255, 0.2);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: none;
+}
+
+/*
+ * دکمه‌ی اصلی — `rounded-full bg-[#0A4471] px-5 py-4 text-[14px] font-semibold`
+ * با ارتفاعِ `max-h-[53px]`.
+ */
+button[type="submit"] {
+  height: 53px;
+  border-radius: 9999px;
+  background: var(--classeh-navy);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.5;
+}
+
+button[type="submit"]:focus-visible {
+  outline: 2px solid var(--classeh-teal);
+  outline-offset: 2px;
+}
+
+/*
+ * فیلدها — `rounded-[14px] border p-3` و رنگِ focus فیروزه‌ای.
+ * `direction: rtl` این‌جا لازم نیست: `<html dir="rtl">` آن را می‌دهد.
+ */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="tel"] {
+  border-radius: 14px;
+  padding: 12px;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus {
+  border-color: var(--classeh-teal);
+  outline: none;
+  box-shadow: none;
+}
+
+/*
+ * ⚠️ نامِ کاربری، ایمیل و کد همیشه چپ‌چین‌اند حتی وقتی صفحه راست‌چین است.
+ * بدون این، `09123456789` و `ali@…` وارونه دیده می‌شوند — درست تایپ شده‌اند
+ * ولی کاربر فکر می‌کند اشتباه زده.
+ */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="tel"] {
+  direction: ltr;
+  text-align: left;
+}

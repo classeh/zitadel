@@ -3,66 +3,24 @@ export interface Lang {
   code: string;
 }
 
+// 🔴 فقط فارسی — عمداً.
+//
+// این نسخه‌ی Classeh است و همه‌ی کاربرانش دانش‌آموز و والد و معلمِ ایرانی‌اند.
+// نگه‌داشتنِ ۱۵ زبانِ دیگر یعنی یک منوی زبان که هیچ‌کس لازمش ندارد و هرکسی
+// که اشتباهی بزندش صفحه‌ای می‌بیند که نمی‌فهمد.
+//
+// `layout.tsx` سوییچر را وقتی فقط یک زبان هست اصلاً رندر نمی‌کند، پس این
+// آرایه هم فهرست را تعیین می‌کند هم اینکه سوییچر دیده شود یا نه.
+//
+// ⚠️ `fa` را خودِ ZITADEL پشتیبانی نمی‌کند — نه در این اپ و نه در بکند
+// (`PUT /admin/v1/languages/default/fa` جواب می‌دهد
+// «Language is not supported»). پس زبانِ پیش‌فرضِ instance را روی `fa`
+// نگذارید؛ این‌جا تنها گزینه بودنش کافی است، چون `request.ts` وقتی
+// `allowedLanguages` از سرور خالی بیاید همین آرایه را مبنا می‌گیرد.
 export const LANGS: Lang[] = [
   {
-    name: "English",
-    code: "en",
-  },
-  {
-    name: "Deutsch",
-    code: "de",
-  },
-  {
-    name: "Italiano",
-    code: "it",
-  },
-  {
-    name: "Español",
-    code: "es",
-  },
-  {
-    name: "Français",
-    code: "fr",
-  },
-  {
-    name: "Nederlands",
-    code: "nl",
-  },
-  {
-    name: "Polski",
-    code: "pl",
-  },
-  {
-    name: "Português",
-    code: "pt",
-  },
-  {
-    name: "简体中文",
-    code: "zh",
-  },
-  {
-    name: "Русский",
-    code: "ru",
-  },
-  {
-    name: "Magyar",
-    code: "hu",
-  },
-  {
-    name: "Türkçe",
-    code: "tr",
-  },
-  {
-    name: "日本語",
-    code: "ja",
-  },
-  {
-    name: "Українська",
-    code: "uk",
-  },
-  {
-    name: "العربية",
-    code: "ar",
+    name: "فارسی",
+    code: "fa",
   },
 ];
 

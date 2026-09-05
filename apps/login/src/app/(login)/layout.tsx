@@ -1,4 +1,6 @@
 import "@/styles/globals.scss";
+// بعد از globals، تا رویش بنشیند.
+import "@/styles/classeh.scss";
 
 import { BackgroundWrapper } from "@/components/background-wrapper";
 import { LanguageProvider } from "@/components/language-provider";
@@ -12,13 +14,27 @@ import { getAllowedLanguages } from "@/lib/zitadel";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Lato } from "next/font/google";
+import localFont from "next/font/local";
 import { headers } from "next/headers";
 import React, { Suspense } from "react";
 
-const lato = Lato({
-  weight: ["400", "700", "900"],
-  subsets: ["latin"],
+// Estedad — همان فونتی که core-app و صفحه‌ی لاگینِ Keycloak استفاده می‌کنند،
+// و همان سه وزنی که آن صفحه واقعاً به کار می‌برد.
+//
+// 🔴 `next/font/local` و نه `next/font/google`. دو دلیل، هر دو لازم:
+// فونتِ لاتینِ Lato برای متنِ فارسی غلط است، و `next/font/google` موقعِ
+// build از گوگل دانلود می‌کند — که از ایران یعنی buildی که گاهی کار می‌کند
+// و گاهی نه. این‌جا فایل‌ها در مخزن‌اند و build آفلاین است.
+const estedad = localFont({
+  src: [
+    { path: "../../../public/fonts/Estedad-FD-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../../../public/fonts/Estedad-FD-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../../../public/fonts/Estedad-FD-Bold.woff2", weight: "700", style: "normal" },
+  ],
+  // پشته‌ی سیستمی به‌عنوان fallback: اگر روزی فایل‌ها نبودند، صفحه بی‌فونت
+  // نشود.
+  fallback: ["Vazirmatn", "IRANSans", "Tahoma", "sans-serif"],
+  display: "swap",
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -43,7 +59,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html className={`${lato.className}`} suppressHydrationWarning>
+    // 🔴 `dir="rtl"` و `lang="fa"` — ZITADEL هیچ‌جا جهت را ست نمی‌کند، حتی
+    // برای عربی. بدون این، متنِ فارسی چپ‌چین رندر می‌شود: برچسب‌های کوتاه
+    // تحمل‌پذیرند ولی جمله‌هایی مثل «کدی که در ایمیل تأیید دریافت کردید وارد
+    // کنید» به‌هم می‌ریزند. این نسخه تک‌زبانه است، پس جهت ثابت است و شرطی
+    // لازم ندارد.
+    <html className={`${estedad.className}`} dir="rtl" lang="fa" suppressHydrationWarning>
       <head />
       <body>
         <ThemeProvider>
@@ -71,7 +92,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <div className="relative mx-auto w-full max-w-[1100px] py-8">
                     <div>{children}</div>
                     <div className="mx-auto flex max-w-[440px] flex-row items-center justify-end space-x-4 px-4 py-4 md:max-w-full md:px-8">
-                      <LanguageSwitcher languages={languages} />
+                      {/* یک زبان یعنی چیزی برای انتخاب نیست؛ سوییچر فقط یک
+                          منوی تک‌گزینه‌ای می‌شد. */}
+                      {languages.length > 1 && <LanguageSwitcher languages={languages} />}
                       <ThemeSwitch />
                     </div>
                   </div>

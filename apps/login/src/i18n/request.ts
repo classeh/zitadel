@@ -7,7 +7,8 @@ import { getRequestConfig } from "next-intl/server";
 import { cookies, headers } from "next/headers";
 
 export default getRequestConfig(async () => {
-  const fallback = "en";
+  // این build فقط فارسی دارد (`LANGS`)، پس fallback هم فارسی است.
+  const fallback = "fa";
   const cookiesList = await cookies();
 
   const _headers = await headers();
@@ -22,7 +23,15 @@ export default getRequestConfig(async () => {
       const localLanguageCodes = LANGS.map((l) => l.code);
       allowedLanguages = settings.allowedLanguages.filter((l) => localLanguageCodes.includes(l));
     }
-    if (settings.defaultLanguage) {
+    // 🔴 زبانِ پیش‌فرضِ سرور فقط وقتی پذیرفته می‌شود که واقعاً در این build
+    // وجود داشته باشد.
+    //
+    // بدونِ این شرط، instance که `en` را برمی‌گرداند locale را `en` می‌کرد —
+    // زبانی که این build اصلاً ندارد — و صفحه انگلیسی می‌ماند در حالی که
+    // تنها گزینه‌ی موجود فارسی است. ZITADEL هم `fa` را نمی‌پذیرد
+    // (`PUT /admin/v1/languages/default/fa` جواب می‌دهد
+    // «Language is not supported»)، پس سمتِ سرور راهی برای درست کردنش نیست.
+    if (settings.defaultLanguage && LANGS.some((l) => l.code === settings.defaultLanguage)) {
       defaultLanguage = settings.defaultLanguage;
     }
   } catch (e) {
