@@ -1,6 +1,6 @@
 import { LANGS, LANGUAGE_COOKIE_NAME, LANGUAGE_HEADER_NAME } from "@/lib/i18n";
 import { getServiceConfig } from "@/lib/service-url";
-import { getAllowedLanguages, getHostedLoginTranslation } from "@/lib/zitadel";
+import { getAllowedLanguages } from "@/lib/zitadel";
 import { JsonObject } from "@zitadel/client";
 import deepmerge from "deepmerge";
 import { getRequestConfig } from "next-intl/server";
@@ -59,24 +59,21 @@ export default getRequestConfig(async () => {
     }
   }
 
-  const i18nOrganization = _headers.get("x-zitadel-i18n-organization") || ""; // You may need to set this header in middleware
-
-  let translations: JsonObject | Record<string, never> = {};
-  try {
-    const i18nJSON = await getHostedLoginTranslation({
-      serviceConfig,
-      locale,
-      organization: i18nOrganization,
-    });
-
-    if (i18nJSON) {
-      translations = i18nJSON;
-    }
-  } catch (error) {
-    console.warn("Error fetching custom translations:", error);
-  }
-
-  const customMessages = translations;
+  // 🔴 ترجمه‌های سمتِ سرور عمداً خوانده نمی‌شوند.
+  //
+  // این fork تک‌زبانه است و `locales/fa.json` داخلِ خودِ image است، پس آن
+  // مسیر چیزی اضافه نمی‌کند — ولی چیزی خراب می‌کند: پاسخش آخر merge می‌شود
+  // و فارسیِ بسته‌شده در image را با انگلیسی می‌پوشاند.
+  //
+  // اندازه‌گیری‌شده روی همین استقرار: درخواستی که هدرهای host ندارد ۴۰۴
+  // می‌گیرد و صفحه فارسی می‌ماند؛ همان درخواست از پشتِ گیت‌وی — که
+  // `x-zitadel-instance-host` را می‌فرستد — ۲۰۰ می‌گیرد و صفحه انگلیسی
+  // می‌شود. یعنی صفحه بسته به مسیرِ رسیدن به آن، دو زبانِ متفاوت داشت.
+  //
+  // ⚠️ اگر روزی ترجمه‌ی به‌ازای سازمان لازم شد، این را برگردانید و اول
+  // شکلِ خروجی `getHostedLoginTranslation` را وارسی کنید؛ روی gRPC یک
+  // `google.protobuf.Struct` است و آبجکتِ ساده نیست.
+  const customMessages: JsonObject | Record<string, never> = {};
 
   // Load locale messages, fall back to default language messages if locale not found
   let localeMessages;

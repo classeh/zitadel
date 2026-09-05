@@ -21,6 +21,7 @@ import {
   listAuthenticationMethodTypes,
   listIDPLinks,
   searchUsers,
+  toStoredLoginName,
   SearchUsersCommand,
   startIdentityProviderFlow,
 } from "../zitadel";
@@ -251,8 +252,17 @@ export async function sendLoginname(command: SendLoginnameCommand) {
 
     const userLoginSettings = await getLoginSettings({ serviceConfig, organization: user.details?.resourceOwner });
 
-    // compare with the concatenated suffix when set
-    const concatLoginname = command.suffix ? `${command.loginName}@${command.suffix}` : command.loginName;
+    // Compare against the login name as ZITADEL actually stores it. `suffix` is
+    // the org domain this page was handed in the `orgDomain` parameter, and
+    // nothing in an OIDC flow ever sets that — so without the org lookup inside
+    // `toStoredLoginName` a bare name gets compared to a suffixed one and a real
+    // user is reported as unknown.
+    const concatLoginname = await toStoredLoginName({
+      serviceConfig,
+      loginName: command.loginName,
+      organizationId: user.details?.resourceOwner,
+      suffix: command.suffix,
+    });
 
     const humanUser = users[0].type.case === "human" ? users[0].type.value : undefined;
 

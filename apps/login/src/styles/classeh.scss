@@ -35,13 +35,22 @@
  * رندر کند؛ با ارتفاعِ ثابت آن پیام زیرِ برش می‌رفت.
  */
 body {
-  background-color: #ffffff;
+  background-color: var(--classeh-shell-bg);
   color: var(--classeh-ink);
 }
 
-body > div:has(> main),
-body > div > div:first-child {
-  position: relative;
+/*
+ * 🔴 پوسته‌ی ZITADEL باید شفاف شود، وگرنه حباب‌ها اصلاً دیده نمی‌شوند.
+ *
+ * `BackgroundWrapper` یک div تمام‌صفحه با کلاسِ `bg-background-light-600` است.
+ * آن پس‌زمینه‌ی مات، `body` و هر دو شبه‌عنصرِ زیر را کامل می‌پوشاند — بدون
+ * اینکه هیچ خطایی بدهد؛ CSS بارگذاری شده بود و data-URIها هم سرِ جایشان، فقط
+ * پشتِ یک لایه‌ی مات.
+ *
+ * رنگِ پوسته به `body` منتقل شد تا این‌جا شفاف بماند.
+ */
+.bg-background-light-600 {
+  background-color: transparent;
 }
 
 /*

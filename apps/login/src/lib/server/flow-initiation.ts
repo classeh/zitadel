@@ -32,7 +32,20 @@ import { buildCSP } from "../csp";
 
 const logger = createLogger("flow-initiation");
 
-const ORG_SCOPE_REGEX = /urn:zitadel:iam:org:id:([0-9]+)/;
+// 🔴 `[^\s]+` و نه `[0-9]+`.
+//
+// ZITADEL شناسه‌ی سازمان را به‌صورت snowflakeِ عددی می‌سازد و این regex همان
+// را فرض کرده بود. ولی `AddOrganization` شناسه‌ی دلخواه هم می‌پذیرد، و
+// سازمان‌های Classeh شناسه‌شان برابرِ `tenant_id` مونگو است —
+// `68fcca1664d3e5c1a3a8f1fc`.
+//
+// با `[0-9]+` این رشته به `68` بریده می‌شد. هیچ خطایی هم نمی‌داد: صفحه‌ی
+// لاگین با `organization=68` بالا می‌آمد، سازمانی که وجود ندارد، و بررسیِ
+// رمز با «auth failed» رد می‌شد — که به نظر می‌رسد رمز اشتباه است.
+//
+// `[^\s]+` همان چیزی است که دو regexِ بعدی (دامنه و IDP) از قبل استفاده
+// می‌کنند؛ این یکی استثنا بود.
+const ORG_SCOPE_REGEX = /urn:zitadel:iam:org:id:([^\s]+)/;
 const ORG_DOMAIN_SCOPE_REGEX = /urn:zitadel:iam:org:domain:primary:(.+)/;
 const IDP_SCOPE_REGEX = /urn:zitadel:iam:org:idp:id:(.+)/;
 

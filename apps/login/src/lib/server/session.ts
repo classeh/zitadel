@@ -10,6 +10,7 @@ import {
   humanMFAInitSkipped,
   listAuthenticationMethodTypes,
   listUsers,
+  toStoredLoginName,
 } from "@/lib/zitadel";
 import { Code, create, Duration } from "@zitadel/client";
 import { Challenges, RequestChallenges } from "@zitadel/proto/zitadel/session/v2/challenge_pb";
@@ -236,9 +237,23 @@ export async function updateOrCreateSession(options: UpdateSessionCommand) {
       throw error;
     }
 
+    // 🔴 The bare name has to be qualified before it can be looked up.
+    //
+    // With `userLoginMustBeDomain` on, the stored login name is
+    // `ali@<org id>.auth-dev.classeh.ir`, while `hideLoginNameSuffix` lets the
+    // user type just `ali` and the pages carry that bare value forward. The
+    // query below is EQUALS, so it matched nothing and this fallback — whose
+    // whole job is rescuing exactly this case — failed too.
+    //
+    // What the user saw was "auth failed": a correct password reported as
+    // wrong. `toStoredLoginName` appends the org's own primary domain.
     const users = await listUsers({
       serviceConfig,
-      loginName: loginNameForCreation,
+      loginName: await toStoredLoginName({
+        serviceConfig,
+        loginName: loginNameForCreation,
+        organizationId: orgForCreation,
+      }),
       organizationId: orgForCreation,
     });
 

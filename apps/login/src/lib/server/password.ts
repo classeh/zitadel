@@ -15,6 +15,7 @@ import {
   searchUsers,
   setPassword,
   setUserPassword,
+  toStoredLoginName,
 } from "@/lib/zitadel";
 import { Code, create, Duration } from "@zitadel/client";
 import { Checks, ChecksSchema } from "@zitadel/proto/zitadel/session/v2/session_service_pb";
@@ -90,8 +91,21 @@ export async function resetPassword(command: ResetPasswordCommand) {
 
   const userLoginSettings = await getLoginSettings({ serviceConfig, organization: user.details?.resourceOwner });
 
+  // 🔴 The user typed a bare username; ZITADEL stores it with the org's domain
+  // attached, because this org has `userLoginMustBeDomain` on. Comparing the two
+  // as-is rejects every valid login — `ali@<org id>.auth-dev.classeh.ir` is
+  // never equal to what was typed.
+  //
+  // The phone and email comparisons below keep the raw typed value on purpose:
+  // those are alternative identifiers, not login names, and carry no suffix.
+  const concatLoginname = await toStoredLoginName({
+    serviceConfig,
+    loginName: command.loginName,
+    organizationId: user.details?.resourceOwner,
+  });
+
   if (userLoginSettings?.disableLoginWithEmail && userLoginSettings?.disableLoginWithPhone) {
-    if (user.preferredLoginName !== command.loginName) {
+    if (user.preferredLoginName !== concatLoginname) {
       if (userLoginSettings?.ignoreUnknownUsernames) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return {};
@@ -99,7 +113,7 @@ export async function resetPassword(command: ResetPasswordCommand) {
       return { error: t("errors.couldNotSendResetLink") };
     }
   } else if (userLoginSettings?.disableLoginWithEmail) {
-    if (user.preferredLoginName !== command.loginName && humanUser?.phone?.phone !== command.loginName) {
+    if (user.preferredLoginName !== concatLoginname && humanUser?.phone?.phone !== command.loginName) {
       if (userLoginSettings?.ignoreUnknownUsernames) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return {};
@@ -107,7 +121,7 @@ export async function resetPassword(command: ResetPasswordCommand) {
       return { error: t("errors.couldNotSendResetLink") };
     }
   } else if (userLoginSettings?.disableLoginWithPhone) {
-    if (user.preferredLoginName !== command.loginName && humanUser?.email?.email !== command.loginName) {
+    if (user.preferredLoginName !== concatLoginname && humanUser?.email?.email !== command.loginName) {
       if (userLoginSettings?.ignoreUnknownUsernames) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         return {};
@@ -237,9 +251,22 @@ export async function sendPassword(
 
       const userLoginSettings = await getLoginSettings({ serviceConfig, organization: user.details?.resourceOwner });
 
+      // 🔴 The user typed a bare username; ZITADEL stores it with the org's domain
+      // attached, because this org has `userLoginMustBeDomain` on. Comparing the two
+      // as-is rejects every valid login — `ali@<org id>.auth-dev.classeh.ir` is
+      // never equal to what was typed.
+      //
+      // The phone and email comparisons below keep the raw typed value on purpose:
+      // those are alternative identifiers, not login names, and carry no suffix.
+      const concatLoginname = await toStoredLoginName({
+        serviceConfig,
+        loginName: command.loginName,
+        organizationId: user.details?.resourceOwner,
+      });
+
       // recheck login settings after user discovery, as the search might have been done without org scope
       if (userLoginSettings?.disableLoginWithEmail && userLoginSettings?.disableLoginWithPhone) {
-        if (user.preferredLoginName !== command.loginName) {
+        if (user.preferredLoginName !== concatLoginname) {
           // emulate user not found to prevent enumeration (use context settings not user settings)
           recordAuthFailure("password", "login_name_mismatch", command.organization);
           if (loginSettingsByContext?.ignoreUnknownUsernames) {
@@ -248,7 +275,7 @@ export async function sendPassword(
           return { error: t("errors.couldNotVerifyPassword") };
         }
       } else if (userLoginSettings?.disableLoginWithEmail) {
-        if (user.preferredLoginName !== command.loginName && humanUser?.phone?.phone !== command.loginName) {
+        if (user.preferredLoginName !== concatLoginname && humanUser?.phone?.phone !== command.loginName) {
           recordAuthFailure("password", "login_name_mismatch", command.organization);
           if (loginSettingsByContext?.ignoreUnknownUsernames) {
             return { error: t("errors.failedToAuthenticateNoLimit") };
@@ -256,7 +283,7 @@ export async function sendPassword(
           return { error: t("errors.couldNotVerifyPassword") };
         }
       } else if (userLoginSettings?.disableLoginWithPhone) {
-        if (user.preferredLoginName !== command.loginName && humanUser?.email?.email !== command.loginName) {
+        if (user.preferredLoginName !== concatLoginname && humanUser?.email?.email !== command.loginName) {
           recordAuthFailure("password", "login_name_mismatch", command.organization);
           if (loginSettingsByContext?.ignoreUnknownUsernames) {
             return { error: t("errors.failedToAuthenticateNoLimit") };

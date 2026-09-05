@@ -809,6 +809,47 @@ export async function searchUsers({
     return loginNameResult;
   }
 
+  // 🔴 With `userLoginMustBeDomain` on, a login name always carries the org's
+  // primary domain, and the query above is EQUALS — so a bare `ali` matches
+  // nobody even though the user exists.
+  //
+  // The loginname page is supposed to supply that suffix, but it reads it from
+  // an `orgDomain` URL parameter that nothing in an OIDC flow ever sets:
+  // ZITADEL builds the login URL itself with only `requestId` and
+  // `organization`. So the loginname page AND the password page both searched
+  // for the bare name and found nobody, which `ignoreUnknownUsernames` then
+  // reported as "Failed to authenticate." rather than "user not found" —
+  // an unfindable user looked exactly like a wrong password.
+  //
+  // Asking the org for its own primary domain fixes both pages at once, and
+  // only ever runs when the query above already came back empty.
+  if (!suffix && organizationId && !searchValue.includes("@")) {
+    const primaryDomain = await getOrgPrimaryDomain({ serviceConfig, organizationId });
+
+    if (primaryDomain) {
+      const suffixedResult = await userService.listUsers({
+        query: userLookupQuery,
+        queries: [
+          LoginNameQuery(`${searchValue}@${primaryDomain}`),
+          create(SearchQuerySchema, {
+            query: {
+              case: "organizationIdQuery",
+              value: { organizationId },
+            },
+          }),
+        ],
+      });
+
+      if (suffixedResult?.result?.length === 1) {
+        return suffixedResult;
+      }
+
+      if (suffixedResult?.result && suffixedResult.result.length > 1) {
+        return { error: t("errors.multipleUsersFound") };
+      }
+    }
+  }
+
   const emailAndPhoneQueries: SearchQuery[] = [];
   if (loginSettings.disableLoginWithEmail && loginSettings.disableLoginWithPhone) {
     // Both email and phone login are disabled, return empty result
@@ -923,6 +964,74 @@ export async function getOrgsByDomain({ serviceConfig, domain }: WithServiceConf
     },
     {},
   );
+}
+
+/**
+ * The org's primary domain — the suffix ZITADEL appends to every username when
+ * the domain policy has `userLoginMustBeDomain` on, so that `ali` is stored and
+ * queried as `ali@<org id>.auth-dev.classeh.ir`.
+ *
+ * Returns "" when the org has none or the lookup fails, so callers can treat
+ * "no suffix" and "could not find out" identically: search the bare name,
+ * exactly as before this function existed.
+ */
+export async function getOrgPrimaryDomain({
+  serviceConfig,
+  organizationId,
+}: WithServiceConfig<{ organizationId: string }>): Promise<string> {
+  const fetcher = async () => {
+    const orgService: Client<typeof OrganizationService> = await createServiceForHost(OrganizationService, serviceConfig);
+
+    return orgService
+      .listOrganizations(
+        {
+          queries: [
+            {
+              query: {
+                case: "idQuery",
+                value: { id: organizationId },
+              },
+            },
+          ],
+        },
+        {},
+      )
+      .then((resp) => resp?.result?.[0]?.primaryDomain ?? "")
+      .catch(() => "");
+  };
+
+  return freshCache(
+    instanceCacheKey(serviceConfig, `getOrgPrimaryDomain-${organizationId}`),
+    fetcher,
+    getTTLForKey("getOrgPrimaryDomain", longCacheTTL),
+  );
+}
+
+/**
+ * The login name as ZITADEL stores it: what the user typed, plus the org's
+ * primary domain when `userLoginMustBeDomain` put one there.
+ *
+ * Every `preferredLoginName !== <what the user typed>` check needs this. Without
+ * it those checks compare `ali@<org id>.auth-dev.classeh.ir` against `ali`,
+ * conclude the user is someone else, and reject a perfectly valid login.
+ *
+ * `suffix` wins when the caller already knows the domain, so the loginname page
+ * keeps using the `orgDomain` it was given rather than paying for a lookup.
+ */
+export async function toStoredLoginName({
+  serviceConfig,
+  loginName,
+  organizationId,
+  suffix,
+}: WithServiceConfig<{ loginName: string; organizationId?: string; suffix?: string }>): Promise<string> {
+  // Already qualified — either a full login name or an email address.
+  if (loginName.includes("@")) {
+    return loginName;
+  }
+
+  const domain = suffix || (organizationId ? await getOrgPrimaryDomain({ serviceConfig, organizationId }) : "");
+
+  return domain ? `${loginName}@${domain}` : loginName;
 }
 
 export async function startIdentityProviderFlow({

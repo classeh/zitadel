@@ -65,3 +65,42 @@ reversed — typed correctly, but the user reads it as wrong.
 Persian, and `next/font/google` downloads at build time — which from Iran means
 a build that works some days and not others. The files are in the repo and the
 build is offline.
+
+## The bug that made every login fail: a bare username can never be found
+
+Symptom was `Failed to authenticate.` on the password step for a user whose
+password was correct — indistinguishable from a wrong password, because
+`ignoreUnknownUsernames` is on for these orgs and deliberately makes the two
+look identical.
+
+Cause: this org has `userLoginMustBeDomain`, so ZITADEL stores the login name as
+`ali@<org id>.auth-dev.classeh.ir`, while `hideLoginNameSuffix` lets the user
+type just `ali`. Every lookup and every comparison in the app used the bare
+value against an `EQUALS` query, so it matched nobody.
+
+The app does have a mechanism for this — `searchUsers` takes a `suffix` — but
+the loginname page reads that suffix from an `orgDomain` URL parameter, and
+nothing in an OIDC flow ever sets it: ZITADEL builds the login URL itself with
+only `requestId` and `organization`. So the suffix was always undefined.
+
+Proven at API level before any code was changed:
+
+```
+loginName=ali                                        -> matches: 0
+loginName=ali@68fcca1664d3e5c1a3a8f1fc.auth-dev...   -> matches: 1
+```
+
+Fix is two helpers in `lib/zitadel.ts` and four call sites:
+
+| Where | Change |
+|---|---|
+| `getOrgPrimaryDomain` | asks the org for its own primary domain, cached per org |
+| `toStoredLoginName` | the typed name plus that domain, when the name has no `@` |
+| `searchUsers` | retries the loginName query with the suffix, only when the first query came back empty |
+| `loginname.ts`, `password.ts` (×2 functions), `session.ts` | compare `preferredLoginName` against the qualified name, not the typed one |
+
+The phone and email comparisons keep the raw typed value on purpose: they are
+alternative identifiers and carry no suffix.
+
+Verified end to end on `v4.17.2-classeh7`, from `oidc/start` to an
+authorization code at the callback.
